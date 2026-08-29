@@ -1,6 +1,8 @@
 # 📄 AI Resume & Job Matching System
 
-An AI-powered web application that analyzes how well a resume matches a job description, using a combination of keyword matching, TF-IDF similarity, and semantic AI similarity powered by Sentence Transformers.
+🔗 **Live Demo:** [ai-resume-analyzer-6vruumhrlvxkfazfbxp8op.streamlit.app](https://ai-resume-analyzer-6vruumhrlvxkfazfbxp8op.streamlit.app/)
+
+An AI-powered web application...
 
 ## 🎯 Features
 
@@ -28,7 +30,16 @@ An AI-powered web application that analyzes how well a resume matches a job desc
 
 ## 📸 Screenshots
 
-*(Add screenshots of your app here — e.g., the Analyze tab and History tab)*
+## 📸 Screenshots
+
+**Login & Sign Up**
+![Login Screen](screenshots/login.png)
+
+**Match Analysis**
+![Analysis Results](screenshots/analysis.png)
+
+**Analysis History**
+![History Tab](screenshots/history.png)
 
 ## 🚀 Installation & Setup
 
