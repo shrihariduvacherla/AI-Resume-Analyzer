@@ -1,21 +1,19 @@
 import streamlit as st
+import secrets
+from database import init_db, save_analysis, get_all_analyses, init_auth_tables, create_user, verify_user, log_login, get_login_history, save_remember_token, get_username_from_token, delete_remember_token
 from resume_parser import extract_text_from_pdf
 from skill_extractor import extract_skills, get_skill_recommendations
 from matcher import calculate_match, calculate_text_similarity, calculate_semantic_similarity, calculate_final_score, get_resume_tips
-from database import init_db, save_analysis, get_all_analyses
 
-# Make sure the database and table exist before the app runs
+# Make sure the database and tables exist before the app runs
 init_db()
+init_auth_tables()
 
 # Basic page configuration
 st.set_page_config(page_title="AI Resume Analyzer", page_icon="📄", layout="wide")
 
 
 def get_score_color(score):
-    """
-    Returns a color based on the score value, so higher scores look
-    more positive (green) and lower scores look more cautionary (red).
-    """
     if score >= 70:
         return "#2ECC71"
     elif score >= 40:
@@ -25,10 +23,6 @@ def get_score_color(score):
 
 
 def render_score_card(label, score):
-    """
-    Renders a single score as a colored card with a progress bar,
-    instead of a plain number, for a more visual, professional look.
-    """
     color = get_score_color(score)
     st.markdown(f"""
         <div style="padding: 12px; border-radius: 10px; background-color: #F8F9FA;
@@ -40,7 +34,6 @@ def render_score_card(label, score):
     st.progress(min(int(score), 100))
 
 
-# --- Custom CSS Styling (Gemini-inspired) ---
 # --- Custom CSS Styling (Gemini-inspired, theme-aware) ---
 st.markdown("""
     <style>
@@ -50,7 +43,6 @@ st.markdown("""
             font-family: 'Roboto', 'Google Sans', sans-serif;
         }
 
-        /* Gradient title text - works in both light and dark mode */
         h1 {
             background: linear-gradient(90deg, #4285F4, #9B72CB, #D96570);
             -webkit-background-clip: text;
@@ -60,7 +52,6 @@ st.markdown("""
             font-size: 2.2rem !important;
         }
 
-        /* Buttons - fully rounded "pill" shape, same in both themes */
         .stButton > button {
             background: linear-gradient(90deg, #4285F4, #9B72CB);
             color: white !important;
@@ -77,13 +68,11 @@ st.markdown("""
             transform: translateY(-1px);
         }
 
-        /* Containers - use theme's own background/border, just add rounding + shadow */
         div[data-testid="stVerticalBlockBorderWrapper"] {
             border-radius: 20px !important;
             box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
         }
 
-        /* Text areas - rounded, but let theme control colors */
         textarea, .stTextArea textarea {
             border-radius: 18px !important;
         }
@@ -93,7 +82,6 @@ st.markdown("""
             border: 1.5px dashed rgba(128, 128, 128, 0.4) !important;
         }
 
-        /* Expander - just rounding, no forced colors */
         .streamlit-expanderHeader {
             border-radius: 12px;
             font-weight: 500;
@@ -104,7 +92,6 @@ st.markdown("""
             font-size: 15px;
         }
 
-        /* Progress bars - gradient fill (looks good in both themes) */
         .stProgress > div > div {
             background: linear-gradient(90deg, #4285F4, #9B72CB) !important;
         }
@@ -115,6 +102,75 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# --- Authentication Logic ---
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "username" not in st.session_state:
+    st.session_state.username = None
+
+# Check the URL for a remember-me token
+if not st.session_state.logged_in:
+    token_from_url = st.query_params.get("remember_token")
+    if token_from_url:
+        remembered_user = get_username_from_token(token_from_url)
+        if remembered_user:
+            st.session_state.logged_in = True
+            st.session_state.username = remembered_user
+
+if not st.session_state.logged_in:
+    st.title("🔐 Welcome to AI Resume Analyzer")
+    st.write("Please log in or create an account to continue.")
+
+    login_tab, signup_tab = st.tabs(["Login", "Sign Up"])
+
+    with login_tab:
+        login_username = st.text_input("Username", key="login_username")
+        login_password = st.text_input("Password", type="password", key="login_password")
+        remember_me = st.checkbox("Remember me on this device")
+
+        if st.button("Log In"):
+            if verify_user(login_username, login_password):
+                st.session_state.logged_in = True
+                st.session_state.username = login_username
+                log_login(login_username)
+
+                if remember_me:
+                    new_token = secrets.token_urlsafe(32)
+                    save_remember_token(login_username, new_token)
+                    st.query_params["remember_token"] = new_token
+
+                st.success("✅ Logged in successfully!")
+                st.rerun()
+            else:
+                st.error("❌ Incorrect username or password.")
+
+    with signup_tab:
+        new_username = st.text_input("Choose a username", key="signup_username")
+        new_password = st.text_input("Choose a password", type="password", key="signup_password")
+
+        if st.button("Sign Up"):
+            if not new_username or not new_password:
+                st.warning("⚠️ Please fill in both fields.")
+            elif create_user(new_username, new_password):
+                st.success("✅ Account created! Please log in using the Login tab.")
+            else:
+                st.error("❌ That username is already taken. Please choose another.")
+
+    st.stop()
+
+# --- Logout button ---
+with st.sidebar:
+    st.write(f"👤 Logged in as: **{st.session_state.username}**")
+    if st.button("Log Out"):
+        st.session_state.logged_in = False
+        st.session_state.username = None
+
+        token_from_url = st.query_params.get("remember_token")
+        if token_from_url:
+            delete_remember_token(token_from_url)
+        st.query_params.clear()
+
+        st.rerun()
 
 # --- Sidebar ---
 with st.sidebar:
@@ -129,10 +185,9 @@ st.write("Analyze how well your resume matches a job description using skill det
 st.divider()
 
 # --- Tabs for main navigation ---
-tab1, tab2 = st.tabs(["🔍 Analyze", "🕘 History"])
+tab1, tab2, tab3 = st.tabs(["🔍 Analyze", "🕘 History", "👥 Login Activity"])
 
 with tab1:
-    # --- Resume Upload Section ---
     with st.container(border=True):
         st.subheader("1️⃣ Upload Your Resume")
 
@@ -157,7 +212,6 @@ with tab1:
 
     st.write("")
 
-    # --- Job Description Section ---
     with st.container(border=True):
         st.subheader("2️⃣ Paste Job Description")
 
@@ -171,7 +225,6 @@ with tab1:
 
     st.write("")
 
-    # --- Matching Section ---
     analyze_clicked = st.button("🔍 Analyze Match", use_container_width=True)
 
     if analyze_clicked:
@@ -210,7 +263,6 @@ with tab1:
 
             st.write("")
 
-            # --- Recommendations Section ---
             with st.container(border=True):
                 st.subheader("4️⃣ Recommendations")
 
@@ -227,7 +279,6 @@ with tab1:
                 for tip in resume_tips:
                     st.write(f"- {tip}")
 
-            # Save this analysis to the database
             save_analysis(
                 final_score,
                 result["match_percentage"],
@@ -260,3 +311,13 @@ with tab2:
                     st.write(f"**Missing Skills:** {missing}")
     else:
         st.write("No analysis history yet. Run your first analysis in the Analyze tab!")
+
+with tab3:
+    st.subheader("Login Activity Log")
+    logins = get_login_history()
+
+    if logins:
+        for username, login_time in logins:
+            st.write(f"👤 **{username}** logged in at 🕒 {login_time}")
+    else:
+        st.write("No login activity recorded yet.")
