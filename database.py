@@ -1,4 +1,5 @@
 import sqlite3
+import os
 from datetime import datetime
 
 DB_FILE = "data/analysis_history.db"
@@ -9,6 +10,11 @@ def init_db():
     Creates the database and the 'history' table if they don't already exist.
     Safe to call every time the app starts — it won't overwrite existing data.
     """
+    # Make sure the 'data' folder exists before trying to create the database inside it.
+    # This matters especially on cloud deployments, where empty folders aren't
+    # included when the code is downloaded from GitHub.
+    os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
+
     connection = sqlite3.connect(DB_FILE)
     cursor = connection.cursor()
 
