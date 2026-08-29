@@ -30,15 +30,16 @@ An AI-powered web application...
 
 ## 📸 Screenshots
 
-## 📸 Screenshots
-
 **Login & Sign Up**
+
 ![Login Screen](screenshots/login.png)
 
 **Match Analysis**
+
 ![Analysis Results](screenshots/analysis.png)
 
 **Analysis History**
+
 ![History Tab](screenshots/history.png)
 
 ## 🚀 Installation & Setup
