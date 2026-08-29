@@ -1,0 +1,16 @@
+# Virtual environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Database (contains your personal analysis history - don't share it)
+data/*.db
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# VS Code settings (optional - remove this line if you want to share workspace settings)
+.vscode/
